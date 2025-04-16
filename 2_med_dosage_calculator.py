@@ -57,6 +57,7 @@ Medication Factors (mg/kg):
 
 import json
 import os
+print(os.getcwd())
 
 # Dosage factors for different medications (mg per kg of body weight)
 # These are standard dosing factors based on medical guidelines
@@ -77,10 +78,11 @@ DOSAGE_FACTORS = {
 
 # Medications that use loading doses for first administration
 # BUG: Missing commas between list items
+# FIX: i added commas between the strings 
 LOADING_DOSE_MEDICATIONS = [
-    "amiodarone"
-    "lorazepam"
-    "fentynal"
+    "amiodarone",
+    "lorazepam",
+    "fentanyl" # this is spelled incorrectly
 ]
 
 def load_patient_data(filepath):
@@ -94,8 +96,13 @@ def load_patient_data(filepath):
         list: List of patient dictionaries
     """
     # BUG: No error handling for file not found
-    with open(filepath, 'r') as file:
-        return json.load(file)
+    # FIX: i added try/except to handle the missing file
+    try:
+        with open(filepath, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        print(f"Error: File not found at {filepath}")
+        return []
 
 def calculate_dosage(patient):
     """
@@ -112,30 +119,40 @@ def calculate_dosage(patient):
     
     # Extract patient information
     # BUG: No check if 'weight' key exists
-    weight = patient['weight']
+    # FIX: i used .get()
+    weight = patient.get('weight', 0)
     # BUG: No check if 'medication' key exists
-    medication = patient['medication'] # This bug is diabolical
+    medication = patient.get('medication', '').lower() # This bug is diabolical
     
     # Get the medication factor
     # BUG: Adding 's' to medication name, which doesn't match DOSAGE_FACTORS keys
-    factor = DOSAGE_FACTORS.get(medication + 's', 0)
+    # FIX: just used medication 
+    factor = DOSAGE_FACTORS.get(medication, 0)
     
     # Calculate base dosage
     # BUG: Using addition instead of multiplication
-    base_dosage = weight + factor
+    # FIX: used multiplication 
+    base_dosage = weight * factor
     
     # Determine if loading dose should be applied
     # BUG: No check if 'is_first_dose' key exists
-    is_first_dose = patient.get('is_first_dose', False)
+    # FIX: default to false if key is missing and if not it will use the value from the patient data
+    if 'is_first_dose' not in patient:
+        print("Warning: 'is_first_dose' key is missing. Defaulting to False.")
+        is_first_dose = False  
+    else:
+        is_first_dose = patient['is_first_dose']
+
     loading_dose_applied = False
     final_dosage = base_dosage
     
     # Apply loading dose if it's the first dose and the medication uses loading doses
-    # BUG: Incorrect condition - should check if medication is in LOADING_DOSE_MEDICATIONS
+    # BUG: Incorrect condition - should check if medication is in LOADING_DOSE_MEDICATIONS 
     if is_first_dose and medication in LOADING_DOSE_MEDICATIONS:
         loading_dose_applied = True
         # BUG: Using addition instead of multiplication for loading dose
-        final_dosage = base_dosage + base_dosage
+        # FIX: used multiplication 
+        final_dosage = 2 * base_dosage 
     
     # Add dosage information to the patient record
     patient_with_dosage['base_dosage'] = base_dosage
@@ -145,11 +162,12 @@ def calculate_dosage(patient):
     # Add warnings based on medication
     warnings = []
     # BUG: Typos in medication names
-    if medication == "epinephrin":
+    # FIX: corrected the typos 
+    if medication == "epinephrine":
         warnings.append("Monitor for arrhythmias")
     elif medication == "amiodarone":
         warnings.append("Monitor for hypotension")
-    elif medication == "fentynal":
+    elif medication == "fentanyl":
         warnings.append("Monitor for respiratory depression")
     
     patient_with_dosage['warnings'] = warnings
@@ -179,7 +197,9 @@ def calculate_all_dosages(patients):
         
         # Add to total medication
         # BUG: No check if 'final_dosage' key exists
-        total_medication += patient_with_dosage['final_dosage']
+        # FIX: you have to assume calculate_dosage sets it 
+        total_medication += patient_with_dosage.get('final_dosage', 0)
+
     
     return patients_with_dosages, total_medication
 
@@ -189,11 +209,13 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Construct the path to the data file
-    data_path = os.path.join(script_dir, 'data', 'meds.json')
+    data_path = os.path.join(script_dir, 'data', 'raw', 'meds.json')
     
     # BUG: No error handling for load_patient_data failure
+    # FIX: added if not patients 
     patients = load_patient_data(data_path)
-    
+    if not patients:
+        return
     # Calculate dosages for all patients
     patients_with_dosages, total_medication = calculate_all_dosages(patients)
     
@@ -201,13 +223,18 @@ def main():
     print("Medication Dosages:")
     for patient in patients_with_dosages:
         # BUG: No check if required keys exist
-        print(f"Name: {patient['name']}, Medication: {patient['medication']}, "
-              f"Base Dosage: {patient['base_dosage']:.2f} mg, "
-              f"Final Dosage: {patient['final_dosage']:.2f} mg")
-        if patient['loading_dose_applied']:
-            print(f"  * Loading dose applied")
-        if patient['warnings']:
-            print(f"  * Warnings: {', '.join(patient['warnings'])}")
+        # FIX: i checked for existence of keys and used the get()
+        name = patient.get('name', 'Unknown')
+        med = patient.get('medication', 'Unknown')
+        base = patient.get('base_dosage', 0)
+        final = patient.get('final_dosage', 0)
+        print(f"Name: {name}, Medication: {med}, Base Dosage: {base:.2f} mg, Final Dosage: {final:.2f} mg")
+
+        if patient.get('loading_dose_applied'):
+            print("  * Loading dose applied")
+
+        if patient.get('warnings'):
+            print("  * Warnings: " + ', '.join(patient['warnings']))
     
     print(f"\nTotal medication needed: {total_medication:.2f} mg")
     

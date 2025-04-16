@@ -51,9 +51,14 @@ def load_patient_data(filepath):
     Returns:
         list: List of patient dictionaries
     """
-    # BUG: No error handling for file not found
-    with open(filepath, 'r') as file:
-        return json.load(file)
+    # BUG: No error handling for file not found 
+    # FIX: i added a try-except block 
+    try:
+        with open(filepath, 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        print("Error! File not found.")
+        return[]
 
 def clean_patient_data(patients):
     """
@@ -70,25 +75,40 @@ def clean_patient_data(patients):
         list: Cleaned list of patient dictionaries
     """
     cleaned_patients = []
+    seen = set()
     
     for patient in patients:
         # BUG: Typo in key 'nage' instead of 'name'
-        patient['nage'] = patient['name'].title()
+        # FIX: i corrected the name 
+        patient['name'] = patient.get('name', '').title()
         
         # BUG: Wrong method name (fill_na vs fillna)
-        patient['age'] = patient['age'].fill_na(0)
+        # FIX: i used the int() to convert age 
+        try: 
+            patient['age'] = int(patient.get('age', 0))
+        except (ValueError, TypeError):
+            patient['age'] = 0
         
         # BUG: Wrong method name (drop_duplcates vs drop_duplicates)
-        patient = patient.drop_duplcates()
+        # FIX: don't do this in the middle do it at the end 
+        #patient = patient.drop_duplcates()
         
         # BUG: Wrong comparison operator (= vs ==)
-        if patient['age'] = 18:
+        # FIX: i changed it to the proper comparison operator
+        if patient['age'] >= 18:
+            patient_tuple = tuple(sorted(patient.items()))
+            if patient_tuple not in seen:
+                seen.add(patient_tuple)
+                cleaned_patients.append(patient)
             # BUG: Logic error - keeps patients under 18 instead of filtering them out
-            cleaned_patients.append(patient)
+            #FIX: i made a tuple of sorted items for deduplication
     
     # BUG: Missing return statement for empty list
+    # FIX: changed it to where if theres no valid data it retruns an empty list
     if not cleaned_patients:
-        return None
+        print("No valid patient data found.")
+        return []
+
     
     return cleaned_patients
 
@@ -101,16 +121,23 @@ def main():
     data_path = os.path.join(script_dir, 'data', 'raw', 'patients.json')
     
     # BUG: No error handling for load_patient_data failure
+    # FIX: it checks if patient data is loaded 
     patients = load_patient_data(data_path)
+    if not patients:
+        return
     
     # Clean the patient data
     cleaned_patients = clean_patient_data(patients)
     
     # BUG: No check if cleaned_patients is None
+    # FIX: check before printing
+    if not cleaned_patients:
+        return
     # Print the cleaned patient data
     print("Cleaned Patient Data:")
     for patient in cleaned_patients:
         # BUG: Using 'name' key but we changed it to 'nage'
+        # FIX: the correct keys are name age and diagnosis
         print(f"Name: {patient['name']}, Age: {patient['age']}, Diagnosis: {patient['diagnosis']}")
     
     # Return the cleaned data (useful for testing)

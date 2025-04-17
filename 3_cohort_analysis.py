@@ -44,6 +44,7 @@ def analyze_patient_cohorts(input_file: str) -> pl.DataFrame:
 
 def main():
     # Input file
+    
     input_file = "patients_large.csv"
     
     # Run analysis

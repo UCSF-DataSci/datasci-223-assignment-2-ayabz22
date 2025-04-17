@@ -90,8 +90,7 @@ def clean_patient_data(patients):
             patient['age'] = 0
         
         # BUG: Wrong method name (drop_duplcates vs drop_duplicates)
-        # FIX: don't do this in the middle do it at the end 
-        #patient = patient.drop_duplcates()
+        # FIX: removed the duplicate
         
         # BUG: Wrong comparison operator (= vs ==)
         # FIX: i changed it to the proper comparison operator
